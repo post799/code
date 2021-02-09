@@ -33,6 +33,7 @@ class _MyCalendarState extends State<MyCalendar> {
   Map<DateTime, List<dynamic>> _events;
   List<dynamic> _selectedEvents;
   TextEditingController _eventController;
+  TextEditingController _eventController2;
   SharedPreferences prefs;
 
   @override
@@ -40,6 +41,7 @@ class _MyCalendarState extends State<MyCalendar> {
     super.initState();
     _controller = CalendarController();
     _eventController = TextEditingController();
+    _eventController2 = TextEditingController();
     _events = {};
     _selectedEvents = [];
     initPrefs();
@@ -136,8 +138,14 @@ class _MyCalendarState extends State<MyCalendar> {
     await showDialog(
         context: context,
         builder: (context) => AlertDialog(
-              content: TextField(
-                controller: _eventController,
+              content: Column(
+                children: [
+                  TextField(
+                    controller: _eventController,
+                  ), TextField(
+                    controller: _eventController2,
+                  ),
+                ],
               ),
               actions: <Widget>[
                 FlatButton(
