@@ -1,0 +1,1114 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'first_page.dart';
+import 'dart:async';
+import 'package:after_layout/after_layout.dart';
+import 'package:flutter/material.dart';
+import 'package:toggle_switch/toggle_switch.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+void main() => runApp(MyApp());
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Macro Calculator',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: MainPage(),
+    );
+  }
+}
+
+class MainPage extends StatefulWidget {
+  String value;
+  MainPage({Key key, @required this.value}) : super(key: key);
+  @override
+  _MainPageState createState() => _MainPageState(value);
+}
+
+class _MainPageState extends State<MainPage> {
+  int weightLoss = 2;
+  String value;
+  String mainValue;
+  String newValue;
+  double resultNumber;
+  String fast;
+  String medium;
+  String maintain;
+  double newCalories;
+  double oldCalories;
+  double resultCalories;
+  double resultCalories2;
+  double tabNumber;
+  String totalCalories;
+  String newValue2;
+  double newValue3;
+  double afterDelete;
+  int firstDay;
+  int today;
+  String fat = '0';
+  String carbs = '0';
+  String protein = '0';
+  double fatDouble;
+  double carbsDouble = 0;
+  double proteinDouble = 0;
+  double newProtein;
+  double initProtein;
+  double newFat;
+  double initFat;
+  double newCarbs;
+  double initCarbs;
+  double loseWeightFat;
+  double loseWeightProtein;
+  double loseWeightCarbs;
+  double ateCarbs = 0;
+  double ateProtein = 0;
+  double ateFat = 0;
+  double deletedFat;
+  double deletedCarbs;
+  double deletedProtein;
+  String warning = 'All values need to be filled out';
+
+  String deletedCaloriesString;
+  double deletedCaloriesDouble;
+  double newCaloriesTotalAfterDeletedItem;
+  double newCaloriesAte;
+  double caloriesAte2;
+  //
+  String personPhone;
+  double personPhone2;
+  double caloriesAte = 0;
+  String consumedCaloriesText = '0';
+  double fromNV;
+  double fromNV2;
+
+  String foodName;
+  String foodCalories;
+  String foodCarbs;
+  String foodProtein;
+  String foodFat;
+
+  String newValueStr;
+  String newValueStr2;
+
+  String onMainPageText = '';
+  String onMainPageText2 = '';
+  CalendarController _controller;
+
+  _MainPageState(
+    this.value,
+  );
+
+  restoreMain() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      weightLoss = (prefs.getInt('loseWeight')) ?? 2;
+      consumedCaloriesText = (prefs.getString('consumedCaloriesText')) ?? '0';
+      caloriesAte = (prefs.getDouble('caloriesAte')) ?? 0;
+      newCaloriesAte = (prefs.getDouble('newCaloriesAte')) ?? 0;
+      carbsDouble = (prefs.getDouble('carbsDouble')) ?? 0;
+      proteinDouble = (prefs.getDouble('proteinDouble')) ?? 0;
+      fatDouble = (prefs.getDouble('fatDouble')) ?? 0;
+
+      mainValue = (prefs.getString('mainValue')) ?? value;
+      initCarbs =
+          (prefs.getDouble('initCarbs')) ?? (double.parse(mainValue) * 0.1) / 4;
+      initProtein = (prefs.getDouble('initProtein')) ??
+          (double.parse(mainValue) * 0.3) / 4;
+      initFat =
+          (prefs.getDouble('initFat')) ?? (double.parse(mainValue) * 0.6) / 9;
+      carbs = (prefs.getString('carbs')) ?? initCarbs.toStringAsFixed(0) ?? '0';
+      protein =
+          (prefs.getString('protein')) ?? initProtein.toStringAsFixed(0) ?? '0';
+      fat = (prefs.getString('fat')) ?? initFat.toStringAsFixed(0) ?? '0';
+      if (weightLoss == 0) {
+        tabNumber = double.parse(mainValue);
+        resultNumber = ((tabNumber * 0.6) - caloriesAte);
+        fast = resultNumber.toStringAsFixed(0);
+        newValue = fast;
+      } else if (weightLoss == 1) {
+        tabNumber = double.parse(mainValue);
+        resultNumber = ((tabNumber * 0.8) - caloriesAte);
+        medium = resultNumber.toStringAsFixed(0);
+        newValue = medium;
+      } else if (weightLoss == 2) {
+        tabNumber = double.parse(mainValue);
+        resultNumber = ((tabNumber * 1) - caloriesAte);
+        maintain = resultNumber.toStringAsFixed(0);
+        newValue = maintain;
+      }
+    });
+  }
+
+  final GlobalKey<FormState> _formStateKey = GlobalKey<FormState>();
+
+  Map<DateTime, List<dynamic>> _events;
+  List<dynamic> _selectedEvents;
+  TextEditingController _eventController;
+  SharedPreferences prefs;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CalendarController();
+    _eventController = TextEditingController();
+    _events = {};
+    _selectedEvents = [];
+    initPrefs();
+    restoreMain();
+  }
+
+  initPrefs() async {
+    prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _events = Map<DateTime, List<dynamic>>.from(
+          decodeMap(json.decode(prefs.getString("events") ?? "{}")));
+    });
+  }
+
+  Map<String, dynamic> encodeMap(Map<DateTime, dynamic> map) {
+    Map<String, dynamic> newMap = {};
+    map.forEach((key, value) {
+      newMap[key.toString()] = map[key];
+    });
+    return newMap;
+  }
+
+  Map<DateTime, dynamic> decodeMap(Map<String, dynamic> map) {
+    Map<DateTime, dynamic> newMap = {};
+    map.forEach((key, value) {
+      newMap[DateTime.parse(key)] = map[key];
+    });
+    return newMap;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(40.0),
+        child: AppBar(
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Color(0x00000000),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings),
+              iconSize: 31,
+              color: Colors.black,
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => FirstPage()));
+              },
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            TableCalendar(
+              events: _events,
+              initialCalendarFormat: CalendarFormat.week,
+              calendarStyle: CalendarStyle(
+                  canEventMarkersOverflow: true,
+                  todayColor: Colors.orange,
+                  selectedColor: Theme.of(context).primaryColor,
+                  todayStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18.0,
+                      color: Colors.white)),
+              headerStyle: HeaderStyle(
+                formatButtonVisible: false,
+                centerHeaderTitle: true,
+              ),
+              startingDayOfWeek: StartingDayOfWeek.monday,
+              onDaySelected: (date, events, _) {
+                setState(() {
+                  _selectedEvents = events;
+                });
+              },
+              calendarController: _controller,
+            ),
+            SizedBox(
+              height: 8,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      carbs,
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 50),
+                    ),
+                    Text(
+                      'Carbs',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      protein,
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 50),
+                    ),
+                    Text(
+                      'Protein',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      fat,
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 50),
+                    ),
+                    Text(
+                      'Fat',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      '$newValue',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 45),
+                    ),
+                    Text(
+                      'Calories',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Divider(
+              color: Colors.grey,
+              height: 1,
+              thickness: 1,
+              // indent: 70,
+              // endIndent: 70,
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      'Consumed:Calories: $consumedCaloriesText, Carbs: ${carbsDouble.toStringAsFixed(0)},protein: ${proteinDouble.toStringAsFixed(0)},fat: ${fatDouble.toStringAsFixed(0)}',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                )
+              ],
+            ),
+            SizedBox(
+              height: 15,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ToggleSwitch(
+                  minWidth: 130.0,
+                  minHeight: 40.0,
+                  initialLabelIndex: weightLoss,
+                  cornerRadius: 10.0,
+                  activeFgColor: Colors.white,
+                  inactiveBgColor: Color(0xff444c91),
+                  inactiveFgColor: Color(0xffe6e7f0),
+                  labels: [
+                    ' Lose It\n  Fast',
+                    ' Lose\nWeight',
+                    'Maintain\n Weight',
+                  ],
+                  fontSize: 15,
+                  activeBgColors: [
+                    Colors.indigo[900],
+                    Colors.indigo[900],
+                    Colors.indigo[900],
+                  ],
+                  onToggle: (index) async {
+                    SharedPreferences prefs =
+                        await SharedPreferences.getInstance();
+                    setState(() {
+                      tabNumber = double.parse(mainValue);
+                      if (index == 0) {
+                        weightLoss = 0;
+                        resultNumber = ((tabNumber * 0.6) - caloriesAte);
+                        fast = resultNumber.toStringAsFixed(0);
+                        newValue = fast;
+
+                        loseWeightFat = (initFat * 0.6) - fatDouble;
+                        fat = loseWeightFat.toStringAsFixed(0);
+                        loseWeightProtein = (initProtein * 0.6) - proteinDouble;
+                        protein = loseWeightProtein.toStringAsFixed(0);
+                        loseWeightCarbs = (initCarbs * 0.6) - carbsDouble;
+                        carbs = loseWeightCarbs.toStringAsFixed(0);
+
+                        prefs.setString('carbs', carbs);
+                        prefs.setString('protein', protein);
+                        prefs.setString('fat', fat);
+
+                        prefs.setString(
+                            'consumedCaloriesText', consumedCaloriesText);
+                        prefs.setInt('loseWeight', weightLoss);
+                        prefs.setString('mainValue', mainValue);
+                      } else if (index == 1) {
+                        weightLoss = 1;
+                        resultNumber = ((tabNumber * 0.8) - caloriesAte);
+                        medium = resultNumber.toStringAsFixed(0);
+                        newValue = medium;
+                        loseWeightFat = (initFat * 0.8) - fatDouble;
+                        fat = loseWeightFat.toStringAsFixed(0);
+                        loseWeightProtein = (initProtein * 0.8) - proteinDouble;
+                        protein = loseWeightProtein.toStringAsFixed(0);
+                        loseWeightCarbs = (initCarbs * 0.8) - carbsDouble;
+                        carbs = loseWeightCarbs.toStringAsFixed(0);
+
+                        prefs.setString('carbs', carbs);
+                        prefs.setString('protein', protein);
+                        prefs.setString('fat', fat);
+
+                        prefs.setString(
+                            'consumedCaloriesText', consumedCaloriesText);
+                        prefs.setInt('loseWeight', weightLoss);
+                        prefs.setString('mainValue', mainValue);
+                      } else if (index == 2) {
+                        weightLoss = 2;
+                        resultNumber = ((tabNumber * 1) - caloriesAte);
+                        maintain = resultNumber.toStringAsFixed(0);
+                        newValue = maintain;
+
+                        loseWeightFat = (initFat * 1) - fatDouble;
+                        fat = loseWeightFat.toStringAsFixed(0);
+                        loseWeightProtein = (initProtein * 1) - proteinDouble;
+                        protein = loseWeightProtein.toStringAsFixed(0);
+                        loseWeightCarbs = (initCarbs * 1) - carbsDouble;
+                        carbs = loseWeightCarbs.toStringAsFixed(0);
+
+                        prefs.setString('carbs', carbs);
+                        prefs.setString('protein', protein);
+                        prefs.setString('fat', fat);
+
+                        prefs.setString(
+                            'consumedCaloriesText', consumedCaloriesText);
+                        prefs.setInt('loseWeight', weightLoss);
+                        prefs.setString('mainValue', mainValue);
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 2,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ToggleSwitch(
+                  minWidth: 130.0,
+                  minHeight: 40.0,
+                  initialLabelIndex: 0,
+                  cornerRadius: 10.0,
+                  activeFgColor: Colors.white,
+                  inactiveBgColor: Color(0xff444c91),
+                  inactiveFgColor: Color(0xffe6e7f0),
+                  labels: [
+                    'Keto',
+                    'Low Carb',
+                    'Strict Keto',
+                    '    USDA\nRecomm.',
+                  ],
+                  fontSize: 15,
+                  activeBgColors: [
+                    Colors.indigo[900],
+                    Colors.indigo[900],
+                    Colors.indigo[900],
+                    Colors.indigo[900],
+                  ],
+                  onToggle: (index) async {},
+                ),
+              ],
+            ),
+            Form(
+              key: _formStateKey,
+              autovalidate: true,
+              child: Column(
+                children: <Widget>[
+                  SizedBox(
+                    height: 15,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      RaisedButton(
+                        color: Colors.indigo[900],
+                        child: Text(
+                          ('ADD FOOD'),
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        onPressed: () {
+                          String dialogText3;
+                          String dialogText4;
+                          String dialogText5;
+                          String dialogText6;
+                          String dialogText7;
+
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              // return object of type Dialog
+                              return SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AlertDialog(
+                                      backgroundColor: Color(0xff0a0147),
+                                      title: new Text(
+                                        "Log Your Food",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      content: Container(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            TextField(
+                                              onChanged: (String textTyped) {
+                                                setState(() {
+                                                  dialogText3 = textTyped;
+                                                });
+                                              },
+                                              decoration: InputDecoration(
+                                                  hintText: 'Food Name',
+                                                  filled: true,
+                                                  fillColor: Colors.white),
+                                            ),
+                                            SizedBox(
+                                              height: 3,
+                                            ),
+                                            TextField(
+                                              onChanged: (String textTyped) {
+                                                setState(() {
+                                                  dialogText4 = textTyped;
+                                                });
+                                              },
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: InputDecoration(
+                                                  hintText: 'Calories',
+                                                  filled: true,
+                                                  fillColor: Colors.white),
+                                            ),
+                                            TextField(
+                                              onChanged: (String textTyped) {
+                                                setState(() {
+                                                  dialogText5 = textTyped;
+                                                });
+                                              },
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: InputDecoration(
+                                                  hintText: 'Carbs',
+                                                  filled: true,
+                                                  fillColor: Colors.white),
+                                            ),
+                                            TextField(
+                                              onChanged: (String textTyped) {
+                                                setState(() {
+                                                  dialogText6 = textTyped;
+                                                });
+                                              },
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: InputDecoration(
+                                                  hintText: 'Protein',
+                                                  filled: true,
+                                                  fillColor: Colors.white),
+                                            ),
+                                            TextField(
+                                              onChanged: (String textTyped) {
+                                                setState(() {
+                                                  dialogText7 = textTyped;
+                                                });
+                                              },
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: InputDecoration(
+                                                  hintText: 'Fat',
+                                                  filled: true,
+                                                  fillColor: Colors.white),
+                                            ),
+                                            SizedBox(
+                                              height: 2,
+                                            ),
+                                            Text(
+                                              warning,
+                                              style: TextStyle(
+                                                  color: Colors.white),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      actions: <Widget>[
+                                        // usually buttons at the bottom of the dialog
+                                        Row(
+                                          children: <Widget>[
+                                            new FlatButton(
+                                              child: new Text(
+                                                "Cancel",
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                              onPressed: () {
+                                                setState(() {});
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                            new FlatButton(
+                                                onPressed: () async {
+                                                  SharedPreferences prefs =
+                                                      await SharedPreferences
+                                                          .getInstance();
+                                                  setState(
+                                                    () {
+                                                      if (dialogText3 != null) {
+                                                        if (dialogText4 !=
+                                                            null) {
+                                                          if (dialogText5 !=
+                                                              null) {
+                                                            if (dialogText6 !=
+                                                                null) {
+                                                              if (dialogText7 !=
+                                                                  null) {
+                                                                if (weightLoss ==
+                                                                    2) {
+                                                                  setState(() {
+                                                                    foodName =
+                                                                        dialogText3;
+                                                                    foodCalories =
+                                                                        dialogText4;
+                                                                    foodCarbs =
+                                                                        dialogText5;
+                                                                    foodProtein =
+                                                                        dialogText6;
+                                                                    foodFat =
+                                                                        dialogText7;
+
+                                                                    //   //Calculating calories after new food entry
+                                                                    newCalories =
+                                                                        double.parse(
+                                                                            foodCalories);
+                                                                    newCarbs =
+                                                                        double.parse(
+                                                                            foodCarbs);
+                                                                    carbsDouble =
+                                                                        newCarbs +
+                                                                            carbsDouble;
+                                                                    ateCarbs =
+                                                                        initCarbs -
+                                                                            carbsDouble;
+                                                                    carbs = ateCarbs
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    newProtein =
+                                                                        double.parse(
+                                                                            foodProtein);
+                                                                    proteinDouble =
+                                                                        newProtein +
+                                                                            proteinDouble;
+                                                                    ateProtein =
+                                                                        initProtein -
+                                                                            proteinDouble;
+                                                                    protein = ateProtein
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    newFat = double
+                                                                        .parse(
+                                                                            foodFat);
+                                                                    fatDouble =
+                                                                        newFat +
+                                                                            fatDouble;
+                                                                    ateFat =
+                                                                        initFat -
+                                                                            fatDouble;
+                                                                    fat = ateFat
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    oldCalories =
+                                                                        double.parse(
+                                                                            newValue);
+
+                                                                    resultCalories =
+                                                                        (oldCalories -
+                                                                            newCalories);
+
+                                                                    totalCalories =
+                                                                        resultCalories
+                                                                            .toStringAsFixed(0);
+                                                                    newValue =
+                                                                        totalCalories;
+
+                                                                    // Calculating calories ate
+
+                                                                    caloriesAte =
+                                                                        newCalories +
+                                                                            caloriesAte;
+                                                                    newCaloriesAte =
+                                                                        caloriesAte;
+
+                                                                    consumedCaloriesText =
+                                                                        caloriesAte
+                                                                            .toStringAsFixed(0);
+
+                                                                    // saving everything in shared prefs
+                                                                    prefs.setDouble(
+                                                                        'ateFat',
+                                                                        ateFat);
+                                                                    prefs.setDouble(
+                                                                        'ateCarbs',
+                                                                        ateCarbs);
+                                                                    prefs.setDouble(
+                                                                        'ateProtein',
+                                                                        ateProtein);
+                                                                    prefs.setString(
+                                                                        'carbs',
+                                                                        carbs);
+                                                                    prefs.setString(
+                                                                        'fat',
+                                                                        fat);
+                                                                    prefs.setString(
+                                                                        'protein',
+                                                                        protein);
+
+                                                                    prefs.setDouble(
+                                                                        'caloriesAte',
+                                                                        caloriesAte);
+                                                                    prefs.setDouble(
+                                                                        'initCarbs',
+                                                                        initCarbs);
+                                                                    prefs.setDouble(
+                                                                        'carbsDouble',
+                                                                        carbsDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'initProtein',
+                                                                        initProtein);
+                                                                    prefs.setDouble(
+                                                                        'proteinDouble',
+                                                                        proteinDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'initFat',
+                                                                        initFat);
+                                                                    prefs.setDouble(
+                                                                        'fatDouble',
+                                                                        fatDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'newCaloriesAte',
+                                                                        newCaloriesAte);
+                                                                    prefs.setString(
+                                                                        'consumedCaloriesText',
+                                                                        consumedCaloriesText);
+                                                                    prefs.setString(
+                                                                        'mainValue',
+                                                                        mainValue);
+                                                                  });
+                                                                  Navigator.of(
+                                                                          context)
+                                                                      .pop();
+                                                                } else if (weightLoss ==
+                                                                    1) {
+                                                                  setState(() {
+                                                                    foodName =
+                                                                        dialogText3;
+                                                                    foodCalories =
+                                                                        dialogText4;
+                                                                    foodCarbs =
+                                                                        dialogText5;
+                                                                    foodProtein =
+                                                                        dialogText6;
+                                                                    foodFat =
+                                                                        dialogText7;
+
+                                                                    //Calculating calories after new food entry
+                                                                    newCalories =
+                                                                        double.parse(
+                                                                            foodCalories);
+                                                                    newCarbs =
+                                                                        double.parse(
+                                                                            foodCarbs);
+                                                                    carbsDouble =
+                                                                        newCarbs +
+                                                                            carbsDouble;
+
+                                                                    loseWeightCarbs =
+                                                                        (initCarbs *
+                                                                                0.8) -
+                                                                            carbsDouble;
+                                                                    carbs = loseWeightCarbs
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    newProtein =
+                                                                        double.parse(
+                                                                            foodProtein);
+                                                                    proteinDouble =
+                                                                        newProtein +
+                                                                            proteinDouble;
+
+                                                                    loseWeightProtein =
+                                                                        (initProtein *
+                                                                                0.8) -
+                                                                            proteinDouble;
+                                                                    protein = loseWeightProtein
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    newFat = double
+                                                                        .parse(
+                                                                            foodFat);
+                                                                    fatDouble =
+                                                                        newFat +
+                                                                            fatDouble;
+                                                                    loseWeightFat =
+                                                                        (initFat *
+                                                                                0.8) -
+                                                                            fatDouble;
+                                                                    fat = loseWeightFat
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    oldCalories =
+                                                                        double.parse(
+                                                                            newValue);
+
+                                                                    resultCalories =
+                                                                        (oldCalories -
+                                                                            newCalories);
+
+                                                                    totalCalories =
+                                                                        resultCalories
+                                                                            .toStringAsFixed(0);
+                                                                    newValue =
+                                                                        totalCalories;
+
+                                                                    //Calculating calories ate
+
+                                                                    caloriesAte =
+                                                                        newCalories +
+                                                                            caloriesAte;
+                                                                    newCaloriesAte =
+                                                                        caloriesAte;
+
+                                                                    consumedCaloriesText =
+                                                                        caloriesAte
+                                                                            .toStringAsFixed(0);
+
+                                                                    //saving everything in shared prefs
+                                                                    prefs.setDouble(
+                                                                        'ateFat',
+                                                                        ateFat);
+                                                                    prefs.setDouble(
+                                                                        'ateCarbs',
+                                                                        ateCarbs);
+                                                                    prefs.setDouble(
+                                                                        'ateProtein',
+                                                                        ateProtein);
+                                                                    prefs.setString(
+                                                                        'carbs',
+                                                                        carbs);
+                                                                    prefs.setString(
+                                                                        'fat',
+                                                                        fat);
+                                                                    prefs.setString(
+                                                                        'protein',
+                                                                        protein);
+
+                                                                    prefs.setDouble(
+                                                                        'caloriesAte',
+                                                                        caloriesAte);
+                                                                    prefs.setDouble(
+                                                                        'initCarbs',
+                                                                        initCarbs);
+                                                                    prefs.setDouble(
+                                                                        'carbsDouble',
+                                                                        carbsDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'initProtein',
+                                                                        initProtein);
+                                                                    prefs.setDouble(
+                                                                        'proteinDouble',
+                                                                        proteinDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'initFat',
+                                                                        initFat);
+                                                                    prefs.setDouble(
+                                                                        'fatDouble',
+                                                                        fatDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'newCaloriesAte',
+                                                                        newCaloriesAte);
+                                                                    prefs.setString(
+                                                                        'consumedCaloriesText',
+                                                                        consumedCaloriesText);
+                                                                    prefs.setString(
+                                                                        'mainValue',
+                                                                        mainValue);
+                                                                  });
+                                                                  Navigator.of(
+                                                                          context)
+                                                                      .pop();
+                                                                } else if (weightLoss ==
+                                                                    0) {
+                                                                  setState(() {
+                                                                    foodName =
+                                                                        dialogText3;
+                                                                    foodCalories =
+                                                                        dialogText4;
+                                                                    foodCarbs =
+                                                                        dialogText5;
+                                                                    foodProtein =
+                                                                        dialogText6;
+                                                                    foodFat =
+                                                                        dialogText7;
+
+                                                                    //Calculating calories after new food entry
+                                                                    newCalories =
+                                                                        double.parse(
+                                                                            foodCalories);
+                                                                    newCarbs =
+                                                                        double.parse(
+                                                                            foodCarbs);
+                                                                    carbsDouble =
+                                                                        newCarbs +
+                                                                            carbsDouble;
+
+                                                                    loseWeightCarbs =
+                                                                        (initCarbs *
+                                                                                0.6) -
+                                                                            carbsDouble;
+                                                                    carbs = loseWeightCarbs
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    newProtein =
+                                                                        double.parse(
+                                                                            foodProtein);
+                                                                    proteinDouble =
+                                                                        newProtein +
+                                                                            proteinDouble;
+
+                                                                    loseWeightProtein =
+                                                                        (initProtein *
+                                                                                0.6) -
+                                                                            proteinDouble;
+                                                                    protein = loseWeightProtein
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    newFat = double
+                                                                        .parse(
+                                                                            foodFat);
+                                                                    fatDouble =
+                                                                        newFat +
+                                                                            fatDouble;
+                                                                    loseWeightFat =
+                                                                        (initFat *
+                                                                                0.6) -
+                                                                            fatDouble;
+                                                                    fat = loseWeightFat
+                                                                        .toStringAsFixed(
+                                                                            0);
+
+                                                                    oldCalories =
+                                                                        double.parse(
+                                                                            newValue);
+
+                                                                    resultCalories =
+                                                                        (oldCalories -
+                                                                            newCalories);
+
+                                                                    totalCalories =
+                                                                        resultCalories
+                                                                            .toStringAsFixed(0);
+                                                                    newValue =
+                                                                        totalCalories;
+
+                                                                    //Calculating calories ate
+
+                                                                    caloriesAte =
+                                                                        newCalories +
+                                                                            caloriesAte;
+                                                                    newCaloriesAte =
+                                                                        caloriesAte;
+
+                                                                    consumedCaloriesText =
+                                                                        caloriesAte
+                                                                            .toStringAsFixed(0);
+
+                                                                    // saving everything in shared prefs
+                                                                    prefs.setDouble(
+                                                                        'ateFat',
+                                                                        ateFat);
+                                                                    prefs.setDouble(
+                                                                        'ateCarbs',
+                                                                        ateCarbs);
+                                                                    prefs.setDouble(
+                                                                        'ateProtein',
+                                                                        ateProtein);
+                                                                    prefs.setString(
+                                                                        'carbs',
+                                                                        carbs);
+                                                                    prefs.setString(
+                                                                        'fat',
+                                                                        fat);
+                                                                    prefs.setString(
+                                                                        'protein',
+                                                                        protein);
+
+                                                                    prefs.setDouble(
+                                                                        'caloriesAte',
+                                                                        caloriesAte);
+                                                                    prefs.setDouble(
+                                                                        'initCarbs',
+                                                                        initCarbs);
+                                                                    prefs.setDouble(
+                                                                        'carbsDouble',
+                                                                        carbsDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'initProtein',
+                                                                        initProtein);
+                                                                    prefs.setDouble(
+                                                                        'proteinDouble',
+                                                                        proteinDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'initFat',
+                                                                        initFat);
+                                                                    prefs.setDouble(
+                                                                        'fatDouble',
+                                                                        fatDouble);
+
+                                                                    prefs.setDouble(
+                                                                        'newCaloriesAte',
+                                                                        newCaloriesAte);
+                                                                    prefs.setString(
+                                                                        'consumedCaloriesText',
+                                                                        consumedCaloriesText);
+                                                                    prefs.setString(
+                                                                        'mainValue',
+                                                                        mainValue);
+                                                                  });
+                                                                  Navigator.of(
+                                                                          context)
+                                                                      .pop();
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    },
+                                                  );
+                                                },
+                                                child: new Text(
+                                                  "Log",
+                                                  style:
+                                                      TextStyle(fontSize: 20),
+                                                ))
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ..._selectedEvents.map((event) => ListTile(
+                  title: Text(event),
+                  subtitle: Text('second line'),
+                )),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: _showAddDialog,
+      ),
+    );
+  }
+
+  _showAddDialog() async {
+    await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              content: TextField(
+                controller: _eventController,
+              ),
+              actions: <Widget>[
+                FlatButton(
+                  child: Text("Save"),
+                  onPressed: () {
+                    if (_eventController.text.isEmpty) return;
+                    if (_events[_controller.selectedDay] != null) {
+                      _events[_controller.selectedDay]
+                          .add(_eventController.text);
+                    } else {
+                      _events[_controller.selectedDay] = [
+                        _eventController.text
+                      ];
+                    }
+                    prefs.setString("events", json.encode(encodeMap(_events)));
+                    _eventController.clear();
+                    Navigator.pop(context);
+                  },
+                )
+              ],
+            ));
+    setState(() {
+      _selectedEvents = _events[_controller.selectedDay];
+    });
+  }
+}
