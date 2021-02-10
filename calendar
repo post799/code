@@ -1,7 +1,12 @@
-import 'dart:convert';
+import 'dart:async';
+import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
+import 'package:loading/indicator/ball_pulse_indicator.dart';
+import 'package:loading/loading.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'first_page.dart';
+import 'main_page.dart';
+import 'my_calendar.dart';
 
 void main() => runApp(MyApp());
 
@@ -9,166 +14,47 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Macro Calculator',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyCalendar(),
+      debugShowCheckedModeBanner: false,
+      color: Colors.blue,
+      home: Splash(),
     );
   }
 }
 
-class MyCalendar extends StatefulWidget {
-  String value;
-  MyCalendar({Key key, @required this.value}) : super(key: key);
+class Splash extends StatefulWidget {
   @override
-  _MyCalendarState createState() => _MyCalendarState();
+  SplashState createState() => SplashState();
 }
 
-class _MyCalendarState extends State<MyCalendar> {
-  CalendarController _controller;
+class SplashState extends State<Splash> with AfterLayoutMixin<Splash> {
+  int firstDay;
+  var now = DateTime.now();
 
-  final GlobalKey<FormState> _formStateKey = GlobalKey<FormState>();
+  Future checkFirstSeen() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool _seen = (prefs.getBool('seen') ?? false);
 
-  Map<DateTime, List<dynamic>> _events;
-  List<dynamic> _selectedEvents;
-  TextEditingController _eventController;
-  TextEditingController _eventController2;
-  SharedPreferences prefs;
+    if (_seen) {
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => MyCalendar()));
+    } else {
+      await prefs.setBool('seen', true);
+
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => FirstPage()));
+    }
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _controller = CalendarController();
-    _eventController = TextEditingController();
-    _eventController2 = TextEditingController();
-    _events = {};
-    _selectedEvents = [];
-    initPrefs();
-  }
-
-  initPrefs() async {
-    prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _events = Map<DateTime, List<dynamic>>.from(
-          decodeMap(json.decode(prefs.getString("events") ?? "{}")));
-    });
-  }
-
-  Map<String, dynamic> encodeMap(Map<DateTime, dynamic> map) {
-    Map<String, dynamic> newMap = {};
-    map.forEach((key, value) {
-      newMap[key.toString()] = map[key];
-    });
-    return newMap;
-  }
-
-  Map<DateTime, dynamic> decodeMap(Map<String, dynamic> map) {
-    Map<DateTime, dynamic> newMap = {};
-    map.forEach((key, value) {
-      newMap[DateTime.parse(key)] = map[key];
-    });
-    return newMap;
-  }
+  void afterFirstLayout(BuildContext context) => checkFirstSeen();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(40.0),
-        child: AppBar(
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: Color(0x00000000),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings),
-              iconSize: 31,
-              color: Colors.black,
-              onPressed: () {},
-            ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            TableCalendar(
-              events: _events,
-              initialCalendarFormat: CalendarFormat.week,
-              calendarStyle: CalendarStyle(
-                  canEventMarkersOverflow: true,
-                  todayColor: Colors.orange,
-                  selectedColor: Theme.of(context).primaryColor,
-                  todayStyle: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18.0,
-                      color: Colors.white)),
-              headerStyle: HeaderStyle(
-                formatButtonVisible: false,
-                centerHeaderTitle: true,
-              ),
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              onDaySelected: (date, events, _) {
-                setState(() {
-                  _selectedEvents = events;
-                });
-              },
-              calendarController: _controller,
-            ),
-            SizedBox(
-              height: 8,
-            ),
-            ..._selectedEvents.map((event) => ListTile(
-                  title: Text(event),
-                  subtitle: Text('second line'),
-                )),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: _showAddDialog,
+      body: Center(
+        child: Loading(
+            indicator: BallPulseIndicator(), size: 100.0, color: Colors.pink),
       ),
     );
-  }
-
-  _showAddDialog() async {
-    await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-              content: Column(
-                children: [
-                  TextField(
-                    controller: _eventController,
-                  ), TextField(
-                    controller: _eventController2,
-                  ),
-                ],
-              ),
-              actions: <Widget>[
-                FlatButton(
-                  child: Text("Save"),
-                  onPressed: () {
-                    if (_eventController.text.isEmpty) return;
-                    if (_events[_controller.selectedDay] != null) {
-                      _events[_controller.selectedDay]
-                          .add(_eventController.text);
-                    } else {
-                      _events[_controller.selectedDay] = [
-                        _eventController.text
-                      ];
-                    }
-                    prefs.setString("events", json.encode(encodeMap(_events)));
-                    _eventController.clear();
-                    Navigator.pop(context);
-                  },
-                )
-              ],
-            ));
-    setState(() {
-      _selectedEvents = _events[_controller.selectedDay];
-    });
   }
 }
