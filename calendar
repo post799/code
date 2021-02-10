@@ -1,60 +1,306 @@
-import 'dart:async';
-import 'package:after_layout/after_layout.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:loading/indicator/ball_pulse_indicator.dart';
-import 'package:loading/loading.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'first_page.dart';
-import 'main_page.dart';
-import 'my_calendar.dart';
+
+import 'package:toggle_switch/toggle_switch.dart';
 
 void main() => runApp(MyApp());
+
+class MyEvent {
+  final String title;
+  final String entryCalories;
+  final String entryCarbs;
+  final String entryProtein;
+  final String entryFat;
+  MyEvent(this.title, this.entryCalories, this.entryCarbs, this.entryProtein,
+      this.entryFat);
+
+  MyEvent.fromJson(Map<String, dynamic> json)
+      : title = (json["title"] ?? ""),
+        entryCalories = (json["detail"] ?? ""),
+        entryCarbs = (json["detail"] ?? ""),
+        entryProtein = (json["detail"] ?? ""),
+        entryFat = (json["detail"] ?? "");
+
+  String get getString => toJson;
+
+  String get toJson =>
+      "{\"title\": \"$title\", \"detail\": \"$entryCalories\", \"detail2\": \"$entryCarbs\",\"detail3\": \"$entryCarbs\",\"detail4\": \"$entryFat\"}";
+}
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      color: Colors.blue,
-      home: Splash(),
+      title: 'Macro Calculator',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: MyCalendar(),
     );
   }
 }
 
-class Splash extends StatefulWidget {
+class MyCalendar extends StatefulWidget {
+  String value;
+  MyCalendar({Key key}) : super(key: key);
   @override
-  SplashState createState() => SplashState();
+  _MyCalendarState createState() => _MyCalendarState();
 }
 
-class SplashState extends State<Splash> with AfterLayoutMixin<Splash> {
-  int firstDay;
-  var now = DateTime.now();
+class _MyCalendarState extends State<MyCalendar> {
+  CalendarController _controller;
 
-  Future checkFirstSeen() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool _seen = (prefs.getBool('seen') ?? false);
-
-    if (_seen) {
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => MyCalendar()));
-    } else {
-      await prefs.setBool('seen', true);
-
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => FirstPage()));
-    }
-  }
+  final GlobalKey<FormState> _formStateKey = GlobalKey<FormState>();
+  Map<DateTime, List<dynamic>> _events;
+  List<MyEvent> _selectedEvents;
+  TextEditingController _eventControllerFood;
+  TextEditingController _eventControllerCalories;
+  TextEditingController _eventControllerCarbs;
+  TextEditingController _eventControllerProtein;
+  TextEditingController _eventControllerFat;
+  SharedPreferences prefs;
 
   @override
-  void afterFirstLayout(BuildContext context) => checkFirstSeen();
+  void initState() {
+    super.initState();
+    _controller = CalendarController();
+    _eventControllerFood = TextEditingController();
+    _eventControllerCalories = TextEditingController();
+    _eventControllerCarbs = TextEditingController();
+    _eventControllerProtein = TextEditingController();
+    _eventControllerFat = TextEditingController();
+    _events = {};
+    _selectedEvents = [];
+    initPrefs();
+  }
+
+  initPrefs() async {
+    prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _events = Map<DateTime, List<dynamic>>.from(
+          decodeMap(json.decode(prefs.getString("events") ?? "{}")));
+    });
+  }
+
+  Map<String, dynamic> encodeMap(Map<DateTime, List<dynamic>> map) {
+    Map<String, dynamic> newMap = {};
+    map.forEach((key, value) {
+      newMap[key.toString()] =
+          map[key].map((v) => (v as MyEvent).toJson).toList();
+    });
+    return newMap;
+  }
+
+  Map<DateTime, dynamic> decodeMap(Map<String, dynamic> map) {
+    Map<DateTime, dynamic> newMap = {};
+    map.forEach((key, value) {
+      newMap[DateTime.parse(key)] = (map[key] as List)
+          .map((v) => MyEvent.fromJson(json.decode(v)))
+          .toList();
+    });
+    return newMap;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Loading(
-            indicator: BallPulseIndicator(), size: 100.0, color: Colors.pink),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(40.0),
+        child: AppBar(
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Color(0x00000000),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings),
+              iconSize: 31,
+              color: Colors.black,
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => FirstPage()));
+              },
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            TableCalendar(
+              events: _events,
+              initialCalendarFormat: CalendarFormat.week,
+              calendarStyle: CalendarStyle(
+                  canEventMarkersOverflow: true,
+                  todayColor: Colors.orange,
+                  selectedColor: Theme.of(context).primaryColor,
+                  todayStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18.0,
+                      color: Colors.white)),
+              headerStyle: HeaderStyle(
+                formatButtonVisible: false,
+                centerHeaderTitle: true,
+              ),
+              startingDayOfWeek: StartingDayOfWeek.monday,
+              onDaySelected: (date, events, _) {
+                setState(() {
+                  _selectedEvents = events as List<MyEvent>;
+                });
+              },
+              calendarController: _controller,
+            ),
+            Form(
+              key: _formStateKey,
+              autovalidate: true,
+              child: Column(
+                children: <Widget>[
+                  SizedBox(
+                    height: 15,
+                  ),
+                ],
+              ),
+            ),
+            ..._selectedEvents.map(
+              (event) => ListTile(
+                title: Text(event.title),
+                subtitle: Text(
+                    'Calories:${event.entryCalories}, Carbs:${event.entryCarbs}, Protein:${event.entryProtein}, Fat:${event.entryFat}'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: _showAddDialog,
       ),
     );
+  }
+
+  _showAddDialog() async {
+    await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              backgroundColor: Color(0xff0a0147),
+              title: new Text(
+                "Log Your Food",
+                style: TextStyle(color: Colors.white),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _eventControllerFood,
+                    decoration: InputDecoration(
+                        hintText: 'Food Name',
+                        filled: true,
+                        fillColor: Colors.white),
+                  ),
+                  SizedBox(
+                    height: 3,
+                  ),
+                  TextField(
+                    controller: _eventControllerCalories,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        hintText: 'Calories',
+                        filled: true,
+                        fillColor: Colors.white),
+                  ),
+                  TextField(
+                    controller: _eventControllerCarbs,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        hintText: 'Carbs',
+                        filled: true,
+                        fillColor: Colors.white),
+                  ),
+                  TextField(
+                    controller: _eventControllerProtein,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        hintText: 'Protein',
+                        filled: true,
+                        fillColor: Colors.white),
+                  ),
+                  TextField(
+                    controller: _eventControllerFat,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        hintText: 'Fat', filled: true, fillColor: Colors.white),
+                  ),
+                  SizedBox(
+                    height: 2,
+                  ),
+                  Text(
+                    'All values need to be filled out',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                Row(
+                  children: [
+                    new FlatButton(
+                      child: new Text(
+                        "Cancel",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                      onPressed: () {
+                        setState(() {});
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    FlatButton(
+                      child: Text(
+                        "Log",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                      onPressed: () {
+                        if (_eventControllerFood.text.isEmpty) return;
+                        if (_eventControllerCalories.text.isEmpty) return;
+                        if (_eventControllerCarbs.text.isEmpty) return;
+                        if (_eventControllerProtein.text.isEmpty) return;
+                        if (_eventControllerFat.text.isEmpty) return;
+                        if (_events[_controller.selectedDay] != null) {
+                          _events[_controller.selectedDay].add(MyEvent(
+                            _eventControllerFood.text,
+                            _eventControllerCalories.text,
+                            _eventControllerCarbs.text,
+                            _eventControllerProtein.text,
+                            _eventControllerFat.text,
+                          ));
+                        } else {
+                          _events[_controller.selectedDay] = [
+                            MyEvent(
+                                _eventControllerFood.text,
+                                _eventControllerCalories.text,
+                                _eventControllerCarbs.text,
+                                _eventControllerProtein.text,
+                                _eventControllerFat.text),
+                          ];
+                        }
+                        prefs.setString(
+                            "events", json.encode(encodeMap(_events)));
+                        _eventControllerFood.clear();
+                        _eventControllerCalories.clear();
+                        _eventControllerCarbs.clear();
+                        _eventControllerProtein.clear();
+                        _eventControllerFat.clear();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
+                )
+              ],
+            ));
+    setState(() {
+      _selectedEvents =
+          _events[_controller.selectedDay].map((s) => s as MyEvent).toList();
+    });
   }
 }
